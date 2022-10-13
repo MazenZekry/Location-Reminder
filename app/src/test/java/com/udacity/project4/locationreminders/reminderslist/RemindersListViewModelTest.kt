@@ -10,10 +10,12 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runBlockingTest
 import org.hamcrest.CoreMatchers
 import org.hamcrest.MatcherAssert
+import org.hamcrest.Matchers
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.koin.core.context.stopKoin
 import org.robolectric.annotation.Config
 
 @RunWith(AndroidJUnit4::class)
@@ -21,57 +23,46 @@ import org.robolectric.annotation.Config
 @Config(sdk = [Build.VERSION_CODES.P])
 class RemindersListViewModelTest {
 
-    private lateinit var fakeReminderDataSource: FakeDataSource
-    private lateinit var remindersViewModel: RemindersListViewModel
+    @get: Rule
+    var instantTaskExecutorRule = InstantTaskExecutorRule()
 
-    // Executes each task synchronously using Architecture Components.
-    @get:Rule
-    var instantExecutorRule = InstantTaskExecutorRule()
-
-    @get:Rule
+    @get: Rule
     var mainCoroutineRule = MainCoroutineRule()
 
+    private lateinit var remindersListViewModel: RemindersListViewModel
+    private lateinit var datasource: FakeDataSource
 
     @Before
-    fun setupViewModel() {
-        fakeReminderDataSource = FakeDataSource()
-        remindersViewModel = RemindersListViewModel(
-            ApplicationProvider.getApplicationContext(),
-            fakeReminderDataSource)
+    fun setUp() {
+        stopKoin()
+        datasource = FakeDataSource()
+        remindersListViewModel =
+            RemindersListViewModel(ApplicationProvider.getApplicationContext(), datasource)
+
     }
 
     @Test
-    fun testShouldReturnError () = runBlockingTest  {
-        fakeReminderDataSource.setShouldReturnError(true)
-        saveReminderFakeData()
-        remindersViewModel.loadReminders()
-
+    fun check_loading() = mainCoroutineRule.runBlockingTest {
+        mainCoroutineRule.pauseDispatcher()
+        remindersListViewModel.loadReminders()
         MatcherAssert.assertThat(
-            remindersViewModel.showSnackBar.value, CoreMatchers.`is`("Reminders not found")
+            remindersListViewModel.showLoading.getOrAwaitValue(),
+            Matchers.`is`(true)
+        )
+        mainCoroutineRule.resumeDispatcher()
+        MatcherAssert.assertThat(
+            remindersListViewModel.showLoading.getOrAwaitValue(),
+            Matchers.`is`(false)
         )
     }
 
     @Test
-    fun check_loading() = runBlockingTest {
-
-        mainCoroutineRule.pauseDispatcher()
-        saveReminderFakeData()
-        remindersViewModel.loadReminders()
-
-        MatcherAssert.assertThat(remindersViewModel.showLoading.value, CoreMatchers.`is`(true))
-
-        mainCoroutineRule.resumeDispatcher()
-        MatcherAssert.assertThat(remindersViewModel.showLoading.value, CoreMatchers.`is`(false))
-    }
-
-    private suspend fun saveReminderFakeData() {
-        fakeReminderDataSource.saveReminder(
-            ReminderDTO(
-                "title abc",
-                "description abc",
-                "location abc",
-                77.00,
-                77.00)
+    fun shouldReturnError() = mainCoroutineRule.runBlockingTest {
+        datasource.setReturnError(true)
+        remindersListViewModel.loadReminders()
+        MatcherAssert.assertThat(
+            remindersListViewModel.showSnackBar.getOrAwaitValue(),
+            Matchers.`is`("Test Exception")
         )
     }
 }
