@@ -35,9 +35,7 @@ import java.lang.Exception
 private const val LOCATION_PERMISSION_INDEX = 0
 private const val BACKGROUND_LOCATION_PERMISSION_INDEX = 1
 private const val REQUEST_TURN_DEVICE_LOCATION_ON = 29
-private const val REQUEST_LOCATION_PERMISSION = 1
 private const val REQUEST_FOREGROUND_AND_BACKGROUND_PERMISSION_RESULT_CODE = 2
-private const val REQUEST_FOREGROUND_ONLY_PERMISSIONS_REQUEST_CODE = 3
 
 class SelectLocationFragment : BaseFragment() {
 
@@ -136,7 +134,7 @@ class SelectLocationFragment : BaseFragment() {
     }
 
     @TargetApi(29)
-    private fun foregroundAndBackgroundLocationPermissionApproved(): Boolean {
+    private fun foregroundAndBackgroundLocationPermission(): Boolean {
         val foregroundLocationApproved =
             (PackageManager.PERMISSION_GRANTED == ActivityCompat.checkSelfPermission(
                 requireContext(), Manifest.permission.ACCESS_FINE_LOCATION
@@ -171,27 +169,22 @@ class SelectLocationFragment : BaseFragment() {
     }
 
     @TargetApi(29)
-    private fun foregroundAndBackgroundLocationPermission() {
-        Log.e("foregroundBackground","foregroundAndBackgroundLocationPermissionApproved is ${foregroundAndBackgroundLocationPermissionApproved()}")
-        if (foregroundAndBackgroundLocationPermissionApproved()) {
-            checkDeviceLocationSettingsAndStartGeofence()
-        }
-        var permissionsArray = arrayOf(Manifest.permission.ACCESS_FINE_LOCATION)
-        Log.e("runningQOrLater","runningQOrLater is $runningQOrLater")
-        val resultCode = when {
-            runningQOrLater -> {
-                permissionsArray += Manifest.permission.ACCESS_BACKGROUND_LOCATION
-                REQUEST_FOREGROUND_AND_BACKGROUND_PERMISSION_RESULT_CODE
+    private fun foregroundAndBackgroundLocationPermissionApproved(): Boolean {
+        val foregroundLocationApproved =
+            (PackageManager.PERMISSION_GRANTED == ActivityCompat.checkSelfPermission(
+                requireContext(), Manifest.permission.ACCESS_FINE_LOCATION
+            ))
+        val backgroundLocationApproved =
+            if (runningQOrLater) {
+
+                PackageManager.PERMISSION_GRANTED == ActivityCompat.checkSelfPermission(
+                    requireContext(),
+                    Manifest.permission.ACCESS_BACKGROUND_LOCATION
+                )
+            } else {
+                true
             }
-            else ->
-                REQUEST_FOREGROUND_ONLY_PERMISSIONS_REQUEST_CODE
-        }
-        Log.e("resultCode","resultCode is $resultCode")
-        ActivityCompat.requestPermissions(
-            requireActivity(),
-            permissionsArray,
-            resultCode
-        )
+        return foregroundLocationApproved && backgroundLocationApproved
     }
 
     private fun onLocationSelected(poi: PointOfInterest) {

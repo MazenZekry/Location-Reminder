@@ -57,12 +57,12 @@ class SaveReminderViewModel(val app: Application, val dataSource: ReminderDataSo
         )
         showLoading.value = true
         viewModelScope.launch {
+            showToast.value = app.getString(R.string.reminder_saved)
+            showLoading.value = false
+            navigationCommand.value = NavigationCommand.Back
             dataSource.saveReminder(
                 reminderDTO
             )
-            showLoading.value = false
-            showToast.value = app.getString(R.string.reminder_saved)
-            navigationCommand.value = NavigationCommand.Back
         }
         return reminderDTO
     }
